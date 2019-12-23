@@ -57,32 +57,55 @@ fn fc_test() {
     af_print!("Output:", output);
 
     let target = Array::new(&[1.0, 0.0, 1.0, 0.0, 1.0], d_column(5));
-    let gt = fc.gradient(&target);
+    let gt = fc.error_delta(&target);
     af_print!("Gradient:", gt);
 }
 
 fn train_test() {
     let mut rdr = Reader::from_path("./data/train.csv").unwrap();
     let records = rdr.records()
-                     .map(|r| r.unwrap())
-                     .map(|r: StringRecord| (r[8].parse::<i32>().unwrap(), r[1].parse::<i32>().unwrap()));
+                    .map(Result::unwrap)
+                    .enumerate()
+                    .filter_map(|(i, r)| {
+                        let age = r[5].parse::<i32>();
+                        let survived = r[1].parse::<i32>();
+                        return age.map(|a| survived.map(|s| (a, s))).ok();
+                    })
+                    .map(|r| r.unwrap())
+                    .take(20);
     let (age, survived): (Vec<_>, Vec<_>) = records.unzip();
-    println!("age, survived:\n{:?}\n{:?}", age, survived);
-    let n = age.len();
+    let n = age.len() as u64;
     let mean_age = (age.iter().sum::<i32>() as f32) / n as f32;
     let std_age = stddev(&(age.iter().map(|i| *i as f32).collect::<Vec<f32>>()), None);
     let norm_age: Vec<f32> = age.iter().map(|age| ((*age as f32) - mean_age) / std_age).collect();
-    let input = array(&norm_age, d_column(n as u64));
-    let output = array(&survived.iter().map(|s| *s as f32).collect(), d_column(n as u64));
+    let input = array(&norm_age, d_column(n));
+    let output = array(&survived.iter().map(|s| *s as f32).collect(), d_column(n));
 
-    let mut layer1 = FCLayer::new(he_weights(n as u64, (n as u64) * 2), zero_biases(5), relu, relu_deriv);
-    let mut layer2 = FCLayer::new(he_weights((n as u64) * 2, n as u64), zero_biases(1), relu, relu_deriv);
+    let mut layer1 = FCLayer::new(he_weights(n, (n) * 2), zero_biases((n) * 2), relu, relu_deriv);
+    let mut layer2 = FCLayer::new(he_weights((n) * 2, n), zero_biases(n), relu, relu_deriv);
 
+    /**
+     * This test example's analogue to a loss function;
+     * the distance between the network output and the 
+     */
+    fn mean_square_error(Y: &Array<f32>, y: &Array<f32>) -> f32 {
+        let delta = pow(&(y - Y), &2.0_f32, false);
+        let (mean, _) = mean_all(&delta);
+        return mean as f32;
+    };
+
+    println!("Beginning training.");
     let epochs = 500;
     for i in 0..epochs {
         let l1o = layer1.apply(&input);
         let l2o = layer2.apply(&l1o);
         af_print!("Input, Output, Prediction:", join_many(1, vec!(&input, &l2o, &output)));
+        let l2d = layer2.error_delta(&output);
+        layer2.train(&l1o, &output);
+        layer1.train(&input, &l2d);
+
+        let mse = mean_square_error(&output, &l2o);
+        println!("MSE: {}", mse);
     }
 }
 

@@ -97,6 +97,7 @@ class NeuralNetwork(object):
         # Backpropagation
         l2_error = l2 - targets
         l2_delta = l2_error * self.activation_function(l2, deriv=True)
+
         l1_error = l2_delta.dot(self.w1.T)
         l1_delta = l1_error * self.activation_function(l1, deriv=True)
         

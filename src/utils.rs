@@ -57,6 +57,22 @@ pub fn relu_deriv(x: &Array<f32>) -> Array<f32> {
     return select(&ones, &comparison, &zeroes);
 }
 
+pub fn softmax(x: &Array<f32>) -> Array<f32> {
+    let (m, _) = max_all(x);
+    let max_vector = constant(m as f32, x.dims());
+    let delta = x - max_vector;
+    let e_x = exp(&delta);
+    let (s, _) = sum_all(&e_x);
+    return e_x * (1.0_f32 / (s as f32));
+}
+
+pub fn softmax_deriv(x: &Array<f32>) -> Array<f32> {
+    let diagonal = diag_create(x, 1);
+    let delta = mdot(x, &t(x));
+    let jac = diagonal - delta;
+    return jac;
+}
+
 pub fn he_weights(width: u64, height: u64) -> Array<f32> {
     let dist = Normal::new(0_f64, 0.001_f64).unwrap();
     let values: Vec<f32> = dist.sample_iter(thread_rng())

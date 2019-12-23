@@ -34,10 +34,11 @@ pub trait Layer {
     /**
      * Compute the gradients for the layer, using backpropagation.
      */
-    fn gradient(&mut self, target: &Array<f32>) -> Array<f32>;
+    fn error_delta(&mut self, target: &Array<f32>) -> Array<f32>;
 
     /**
-     * Fit the layer using loss.
+     * Fit the layer using target values.
+     * Returns the delta applied to layer (for use as previous layer targets).
      */
-    fn train(&mut self, target: &Array<f32>);
+    fn train(&mut self, input: &Array<f32>, target: &Array<f32>);
 }

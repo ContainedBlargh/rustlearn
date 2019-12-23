@@ -78,21 +78,22 @@ impl Layer for FCLayer {
         //TODO: rewrite the underneath as a helper function for easy array copy.
         self.recent_x = Some(t(x));
         let dotted = mdot(&t(x), &self.w);
+        //ERROR OCCURS BENEATH
+        println!("dotted dims: {}, b dims: {}", &dotted.dims(), &self.b.dims());
         let added = dotted + &self.b;
+        println!("added!");
         let activated = (self.a)(&added);
+        println!("activated!");
         self.recent_y = Some((self.a)(&added));
         return t(&activated);
     }
 
-    fn gradient(&mut self, target: &Array<f32>) -> Array<f32> {
+    fn error_delta(&mut self, target: &Array<f32>) -> Array<f32> {
         return match (&self.recent_x, &self.recent_y) {
             (Some(x), Some(y)) => {
                 let error = t(y) - target;
-                af_print!("Error:", error);
                 let delta = mdot(&error, &((self.d)(y)));
-                af_print!("Delta:", error);
-                let gt = mdot(&x, &delta);
-                return t(&gt);
+                return delta;
             }
             _ => constant(0_f32, target.dims()),
         };
@@ -103,10 +104,14 @@ impl Layer for FCLayer {
      * 
      * See Kingma & Ba, Adam, Algorithm 1.
      */
-    fn train(&mut self, target: &Array<f32>) {
-        let gt = self.gradient(target);
+    fn train(&mut self, input: &Array<f32>, target: &Array<f32>) {
+        let delta = self.error_delta(target);
+        println!("Computing gt = input({}) * delta({})", input.dims(), delta.dims());
+        let gt = t(&mdot(&t(input), &delta));
         self.t += 1;
+        println!("Computing m...");
         self.m = &gt * (&self.m * self.dr) + (1.0_f32 - self.dr);
+        println!("Computing v...");
         self.v = pow(&gt, &2.0_f32, false) * (&self.v * self.sdr) + (1.0_f32 - self.sdr);
         let bcm = &self.m / (1.0_f32 - self.dr.powf(self.t as f32));
         let bcv = &self.v / (1.0_f32 - self.sdr.powf(self.t as f32));

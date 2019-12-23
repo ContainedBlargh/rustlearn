@@ -1,6 +1,8 @@
 extern crate arrayfire;
 extern crate rand;
 extern crate rand_distr;
+extern crate csv;
+extern crate statistical;
 
 mod utils;
 mod layer;
@@ -10,6 +12,9 @@ use arrayfire::*;
 use utils::*;
 use layer::*;
 use fc::*;
+
+use csv::*;
+use statistical::standard_deviation as stddev;
 
 fn arrayfire_test() {
     println!("Backends: {}, Device. {}", get_backend_count(), get_device());
@@ -56,9 +61,35 @@ fn fc_test() {
     af_print!("Gradient:", gt);
 }
 
+fn train_test() {
+    let mut rdr = Reader::from_path("./data/train.csv").unwrap();
+    let records = rdr.records()
+                     .map(|r| r.unwrap())
+                     .map(|r: StringRecord| (r[8].parse::<i32>().unwrap(), r[1].parse::<i32>().unwrap()));
+    let (age, survived): (Vec<_>, Vec<_>) = records.unzip();
+    println!("age, survived:\n{:?}\n{:?}", age, survived);
+    let n = age.len();
+    let mean_age = (age.iter().sum::<i32>() as f32) / n as f32;
+    let std_age = stddev(&(age.iter().map(|i| *i as f32).collect::<Vec<f32>>()), None);
+    let norm_age: Vec<f32> = age.iter().map(|age| ((*age as f32) - mean_age) / std_age).collect();
+    let input = array(&norm_age, d_column(n as u64));
+    let output = array(&survived.iter().map(|s| *s as f32).collect(), d_column(n as u64));
+
+    let mut layer1 = FCLayer::new(he_weights(n as u64, (n as u64) * 2), zero_biases(5), relu, relu_deriv);
+    let mut layer2 = FCLayer::new(he_weights((n as u64) * 2, n as u64), zero_biases(1), relu, relu_deriv);
+
+    let epochs = 500;
+    for i in 0..epochs {
+        let l1o = layer1.apply(&input);
+        let l2o = layer2.apply(&l1o);
+        af_print!("Input, Output, Prediction:", join_many(1, vec!(&input, &l2o, &output)));
+    }
+}
+
 fn main() {
-    arrayfire_test();
-    fc_test();
+    // arrayfire_test();
+    // fc_test();
+    train_test();
 }
 
 //DOWNLOAD ARRAYFIRE: https://arrayfire.com/download/

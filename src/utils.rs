@@ -22,6 +22,22 @@ pub fn t(vector: &Array<f32>) -> Array<f32> {
     return transpose(vector, false);
 }
 
+pub fn array(data: &Vec<f32>, dims: Dim4) -> Array<f32> {
+    return Array::new(data, dims);
+}
+
+/**
+ * Multiplies two ArrayFire arrays.
+ * 
+ * ArrayFire matrix multiplication rules.
+ * | Size of Input Matrix A | Size of Input Matrix B | Output Matrix Size |
+ * |------------------------|------------------------|--------------------|
+ * | {M,K,1,1}              | {K,N,1,1}              | {M,N,1,1}          |
+ * | {M,K,b2,b3}            | {K,N,b2,b3}            | {M,N,b2,b3}        |
+ * |                        | {K,N,b2,b3}            | {M,N,b2,b3}        |
+ * | {M,K,b2,b3}            | {K,N,1,1}              | {M,N,b2,b3}        |
+ * 
+ */
 pub fn mdot(lhs: &Array<f32>, rhs: &Array<f32>) -> Array<f32> {
     if lhs.dims()[1] != rhs.dims()[0] {
         println!("lhs dims: {}, rhs dims: {}", lhs.dims(), rhs.dims());

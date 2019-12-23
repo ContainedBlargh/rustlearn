@@ -7,4 +7,5 @@ authors = ["ContainedBlargh <jon@zendata.dk>"]
 arrayfire = "3.6.2"
 rand = "0.7.2"
 rand_distr = "0.2.2"
-
+csv = "1.1"
+statistical = "1.0.0"
